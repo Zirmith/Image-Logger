@@ -56,7 +56,9 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
     }
 })
 
-
+app.get("/", (req, res) => {
+  res.send('Hello, world')
+})
 
 
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
