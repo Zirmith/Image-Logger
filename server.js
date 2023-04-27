@@ -48,15 +48,20 @@ app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
   
 
 app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
-    // get the tracking information for an image
-    const id = req.params.id
-    if (images[id]) {
-        const clicks = images[id].clicks
-        res.status(200).send({ clicks, tracking: images[id].tracking })
-    } else {
-        res.status(404).send('Image not found')
-    }
-})
+  const id = req.params.id;
+  if (images[id]) {
+    const clicks = images[id].clicks;
+    const tracking = images[id].tracking || [];
+    const title = `ZImage-Hosting Tracking - Image ${id}`;
+    const description = `This image has been clicked ${clicks} times. Tracking information: ${JSON.stringify(tracking)}`;
+    res.setHeader('title', title);
+    res.setHeader('description', description);
+    res.status(200).send({ clicks, tracking });
+  } else {
+    res.status(404).send('Image not found');
+  }
+});
+
 
 app.get("/", (req, res) => {
   res.send('Hello, world')
