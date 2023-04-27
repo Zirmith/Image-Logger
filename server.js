@@ -144,9 +144,9 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
   }
 });
 
-const sharp = require('sharp');
 
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
+  console.log(`Image viewed. ID: ${req.params.id}, IP: ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`);
   const id = req.params.id;
   if (images[id]) {
     images[id].clicks += 1;
@@ -155,28 +155,21 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     const allowTracking = req.query.allowtracking === 'true';
     if (allowTracking) {
       const hwid = getmac.default();
-      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       if (ip !== '208.78.41.158') { // Replace 1.2.3.4 with the IP address you want to exclude
         images[id].tracking = images[id].tracking || [];
         images[id].tracking.push({ Hardware: hwid, ip });
       }
     }
 
-
-
-   
-
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
-   
     res.setHeader('Content-Type', 'image/png');
     res.send(decryptedBuffer);
   } else {
     res.status(404).send('Image not found');
   }
 });
-
 
 
 
