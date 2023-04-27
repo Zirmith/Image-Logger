@@ -175,7 +175,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
 
 
     res.setHeader('Content-Type', 'image/png');
-    res.send(decryptedBuffer);
+   
 
     // Send the HTML response with the image
     res.write(`
@@ -204,7 +204,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
       </html>
     `);
 
- 
+    res.send(decryptedBuffer);
  
   } else {
     res.status(404).send('Image not found');
