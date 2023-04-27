@@ -53,8 +53,8 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
     const clicks = images[id].clicks;
     const tracking = images[id].tracking || [];
     const title = `ZImage-Hosting Tracking - Image ${id}`;
-    const description = `This image has been clicked ${clicks} times. Tracking information: ${JSON.stringify(tracking)}`;
-
+  // Modify this line to exclude the tracking information
+  const description = `This image has been viewed. Tracking information: ${JSON.stringify(tracking)}`;
     // Generate HTML response with meta tags and dark background
     const html = `
       <!DOCTYPE html>
@@ -149,18 +149,18 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
   console.log(`Image viewed. ID: ${req.params.id}, IP: ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`);
   const id = req.params.id;
   if (images[id]) {
-    images[id].clicks += 1;
+    // Remove this line that increments the clicks count
+    // images[id].clicks += 1;
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
-    const allowTracking = req.query.allowtracking === 'true';
-    if (allowTracking) {
+
+   
       const hwid = getmac.default();
       if (ip !== '208.78.41.158') { // Replace 1.2.3.4 with the IP address you want to exclude
         images[id].tracking = images[id].tracking || [];
         images[id].tracking.push({ Hardware: hwid, ip });
       }
-    }
-
+    
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
@@ -170,8 +170,6 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     res.status(404).send('Image not found');
   }
 });
-
-
 
 
 
