@@ -151,7 +151,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const hwid = getmac.default();
 
-    if (ip !== '208.78.41.158') { // Replace 1.2.3.4 with the IP address you want to exclude
+    if (ip !== '208.78.41.158') {
       images[id].tracking = images[id].tracking || [];
       images[id].tracking.push({ Hardware: hwid, ip });
     }
@@ -167,19 +167,20 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
       <script>
         const img = document.getElementById('image');
         img.addEventListener('load', function() {
-          console.log('Image viewed. ID: ${id}, IP: ${ip}');
+          //console.log('Image viewed. ID: ${id}, IP: ${ip}');
         });
       </script>
     `;
 
-
-   
-
-    // Send the HTML response with the image
+    // Set the response headers to include the og:image meta tag
+    res.setHeader('Content-Type', 'text/html');
     res.write(`
       <html>
         <head>
           <title>ZImage-Hosting Viewer</title>
+          <meta property="og:image" content="data:image/png;base64,${imageData}" />
+          <meta property="og:image:width" content="600" />
+          <meta property="og:image:height" content="400" />
           <style>
             body {
               background-color: black;
@@ -201,10 +202,8 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
         </body>
       </html>
     `);
-  
 
-    res.send(decryptedBuffer);
- 
+    res.end();
   } else {
     res.status(404).send('Image not found');
   }
