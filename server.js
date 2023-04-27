@@ -169,9 +169,11 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
         right: 50,
         background: {
           // Set background color as yellow for the top and red for the bottom
-          top: { r: 255, g: 255, b: 0, alpha: 1 },
-          bottom: { r: 255, g: 0, b: 0, alpha: 1 }
-        }
+          input: ['yellow', 'red'],
+          // or you can also use hex codes like this:
+          // input: ['#FFFF00', '#FF0000'],
+          // alpha: 1, // you can also set the alpha value if you want
+        },
       })
       .toBuffer();
 
@@ -181,6 +183,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     res.status(404).send('Image not found');
   }
 });
+
 
 
 
