@@ -146,26 +146,44 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
 
 
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
-  console.log(`Image viewed. ID: ${req.params.id}, IP: ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`);
   const id = req.params.id;
   if (images[id]) {
-    // Remove this line that increments the clicks count
-    // images[id].clicks += 1;
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const hwid = getmac.default();
 
+    if (ip !== '208.78.41.158') { // Replace 1.2.3.4 with the IP address you want to exclude
+      images[id].tracking = images[id].tracking || [];
+      images[id].tracking.push({ Hardware: hwid, ip });
+    }
 
-   
-      const hwid = getmac.default();
-      if (ip !== '208.78.41.158') { // Replace 1.2.3.4 with the IP address you want to exclude
-        images[id].tracking = images[id].tracking || [];
-        images[id].tracking.push({ Hardware: hwid, ip });
-      }
-    
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
-    res.setHeader('Content-Type', 'image/png');
-    res.send(decryptedBuffer);
+    const imageData = decryptedBuffer.toString('base64');
+    const imageSrc = `data:image/png;base64,${imageData}`;
+
+    // Add a JavaScript script to log the image view
+    const script = `
+      <script>
+        const img = document.getElementById('image');
+        img.addEventListener('load', function() {
+          console.log('Image viewed. ID: ${id}, IP: ${ip}');
+        });
+      </script>
+    `;
+
+    // Send the response with the image and the script
+    res.send(`
+      <html>
+        <head>
+          <title>Image Viewer</title>
+        </head>
+        <body>
+          <img id="image" src="${imageSrc}" />
+          ${script}
+        </body>
+      </html>
+    `);
   } else {
     res.status(404).send('Image not found');
   }
