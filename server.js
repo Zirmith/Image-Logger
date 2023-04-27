@@ -67,44 +67,20 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
   const id = req.params.id;
   if (images[id]) {
     images[id].clicks += 1;
-    const hwid = getmac.default();
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    images[id].tracking = images[id].tracking || [];
-    images[id].tracking.push({ hwid, ip });
+
+    const allowTracking = req.query.allowtracking === 'true';
+    if (allowTracking) {
+      const hwid = getmac.default();
+      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      images[id].tracking = images[id].tracking || [];
+      images[id].tracking.push({ hwid, ip });
+    }
 
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
-    // Add a red and black gradient border
-    const borderedImage = await sharp(decryptedBuffer)
-      .resize(600, 600, {
-        fit: 'cover',
-        background: 'white'
-      })
-      .composite([{
-        input: Buffer.from(`<svg><rect x="0" y="0" width="600" height="600" rx="20" ry="20" style="fill: url(#grad1);"/></svg>`),
-        blend: 'dest-in'
-      }])
-      .composite([{
-        input: Buffer.from(`<svg><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:red;stop-opacity:1"/><stop offset="100%" style="stop-color:black;stop-opacity:1"/></linearGradient></defs><rect x="10" y="10" width="580" height="580" rx="20" ry="20" style="fill: url(#grad1); stroke-width: 4; stroke: #000;"/></svg>`),
-        blend: 'dest-over'
-      }])
-      .png()
-      .toBuffer();
-
-    // Set the response headers with meta tags
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    res.setHeader('Content-Length', borderedImage.length);
-    res.setHeader('Content-Disposition', 'inline; filename="image.png"');
-    res.setHeader('meta', JSON.stringify({
-      'og:image': `data:image/png;base64,${borderedImage.toString('base64')}`,
-      'og:image:type': 'image/png',
-      'og:image:width': '600',
-      'og:image:height': '600'
-    }));
-
-    res.send(borderedImage);
+    res.send(decryptedBuffer);
   } else {
     res.status(404).send('Image not found');
   }
