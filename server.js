@@ -62,9 +62,11 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <meta name="robots" content="noindex, nofollow" />
           <meta property="og:title" content="${title}" />
           <meta property="og:description" content="${description}" />
-          <meta property="og:image" content="http://example.com/image.jpg" />
+          <meta property="og:image" content="http://example.com/images/${id}" />
+          <meta http-equiv="refresh" content="10" />
           <title>${title}</title>
           <style>
             body {
@@ -74,16 +76,37 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
               font-weight: bold;
               text-align: center;
             }
+            table {
+              margin: 0 auto;
+            }
+            td {
+              padding: 5px;
+            }
           </style>
         </head>
         <body>
-          <p>This image has been clicked ${clicks} times.</p>
-          <p>Tracking information: ${JSON.stringify(tracking)}</p>
+          <h1>${title}</h1>
+          <table>
+            <tr>
+              <td>Clicks:</td>
+              <td>${clicks}</td>
+            </tr>
+            <tr>
+              <td>Last updated:</td>
+              <td>${new Date().toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td>Tracking information:</td>
+              <td>${JSON.stringify(tracking)}</td>
+            </tr>
+          </table>
         </body>
       </html>
     `;
     
     // Send the HTML response
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Content-Type', 'text/html');
     res.status(200).send(html);
   } else {
     // Generate HTML response for image not found
@@ -91,8 +114,12 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
       <!DOCTYPE html>
       <html lang="en">
         <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="ZImage-Hosting Tracking - Invalid" />
+        <meta property="og:description" content="This image could not be found in our database" />
+        <meta property="og:image" content="http://example.com/image.jpg" />
           <title>Image Not Found</title>
           <style>
             body {
@@ -104,12 +131,15 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
           </style>
         </head>
         <body>
-          <p>Image not found.</p>
+        <p>Sorry, the image you requested could not be found.</p>
+        <p>Please check the URL</a>.</p>
         </body>
       </html>
     `;
     
     // Send the HTML response
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Content-Type', 'text/html');
     res.status(404).send(html);
   }
 });
