@@ -65,7 +65,7 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
           <meta name="robots" content="noindex, nofollow" />
           <meta property="og:title" content="${title}" />
           <meta property="og:description" content="${description}" />
-          <meta property="og:image" content="http://example.com/images/${id}" />
+          <meta property="og:image" content="https://zimagehosting.onrender.com/host/image/content/raw/${id}" />
           <meta http-equiv="refresh" content="10" />
           <title>${title}</title>
           <style>
@@ -144,6 +144,8 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
   }
 });
 
+const sharp = require('sharp');
+
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
   const id = req.params.id;
   if (images[id]) {
@@ -157,12 +159,29 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
+    // Add a red and yellow gradient border to the image
+    const borderedImage = await sharp(decryptedBuffer)
+      .resize({ width: 500, height: 500 })
+      .extend({
+        top: 50,
+        bottom: 50,
+        left: 50,
+        right: 50,
+        background: {
+          // Set background color as yellow for the top and red for the bottom
+          top: { r: 255, g: 255, b: 0, alpha: 1 },
+          bottom: { r: 255, g: 0, b: 0, alpha: 1 }
+        }
+      })
+      .toBuffer();
+
     res.setHeader('Content-Type', 'image/png');
-    res.send(decryptedBuffer);
+    res.send(borderedImage);
   } else {
     res.status(404).send('Image not found');
   }
 });
+
 
 
 
