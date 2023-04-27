@@ -173,8 +173,6 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     `;
 
 
-
-    res.setHeader('Content-Type', 'image/png');
    
 
     // Send the HTML response with the image
@@ -203,6 +201,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
         </body>
       </html>
     `);
+  
 
     res.send(decryptedBuffer);
  
