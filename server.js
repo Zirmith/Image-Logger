@@ -25,7 +25,7 @@ const images = {}
 app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
   // fetch and encrypt the image from the provided URL, and save it to the server
   const imageUrl = req.body.imageUrl;
-  const jsurl = req.body.jsurl;
+ 
   const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   try {
       const imageBuffer = await request.get(imageUrl, { encoding: null });
@@ -54,9 +54,31 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
     const tracking = images[id].tracking || [];
     const title = `ZImage-Hosting Tracking - Image ${id}`;
     const description = `This image has been clicked ${clicks} times. Tracking information: ${JSON.stringify(tracking)}`;
-    res.setHeader('title', title);
-    res.setHeader('description', description);
-    res.status(200).send({ clicks, tracking });
+    
+    // Generate HTML response with meta tags
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          
+          <!-- Meta tags for link previews -->
+          <meta property="og:title" content="${title}" />
+          <meta property="og:description" content="${description}" />
+          <meta property="og:image" content="https://github.com/Zirmith/rpc-gifs/raw/main/Screen%20Shot%202023-04-27%20at%208.34.26%20AM.png" />
+
+          <title>${title}</title>
+        </head>
+        <body>
+          <p>This image has been clicked ${clicks} times.</p>
+          <p>Tracking information: ${JSON.stringify(tracking)}</p>
+        </body>
+      </html>
+    `;
+    
+    // Send the HTML response
+    res.status(200).send(html);
   } else {
     res.status(404).send('Image not found');
   }
