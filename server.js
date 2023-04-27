@@ -66,7 +66,10 @@ app.get("/", (req, res) => {
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
   const id = req.params.id;
   if (images[id]) {
-    images[id].clicks += 1;
+    if (!images[id].clicked) {
+      images[id].clicks += 1;
+      images[id].clicked = true;
+    }
 
     const allowTracking = req.query.allowtracking === 'true';
     if (allowTracking) {
@@ -79,12 +82,14 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
+    res.setHeader('Cache-Control', 'no-store'); // tell browser not to cache the image
     res.setHeader('Content-Type', 'image/png');
     res.send(decryptedBuffer);
   } else {
     res.status(404).send('Image not found');
   }
 });
+
 
 
 async function decryptImage(encryptedDataPromise) {
