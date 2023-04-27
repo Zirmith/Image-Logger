@@ -54,21 +54,27 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
     const tracking = images[id].tracking || [];
     const title = `ZImage-Hosting Tracking - Image ${id}`;
     const description = `This image has been clicked ${clicks} times. Tracking information: ${JSON.stringify(tracking)}`;
-    
-    // Generate HTML response with meta tags
+
+    // Generate HTML response with meta tags and dark background
     const html = `
       <!DOCTYPE html>
       <html lang="en">
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          
-          <!-- Meta tags for link previews -->
           <meta property="og:title" content="${title}" />
           <meta property="og:description" content="${description}" />
-          <meta property="og:image" content="https://github.com/Zirmith/rpc-gifs/raw/main/Screen%20Shot%202023-04-27%20at%208.34.26%20AM.png" />
-
+          <meta property="og:image" content="http://example.com/image.jpg" />
           <title>${title}</title>
+          <style>
+            body {
+              background-color: #000;
+              background-image: linear-gradient(to right, #2d4eff33, #8220ff33);
+              color: #fff;
+              font-weight: bold;
+              text-align: center;
+            }
+          </style>
         </head>
         <body>
           <p>This image has been clicked ${clicks} times.</p>
@@ -80,7 +86,31 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
     // Send the HTML response
     res.status(200).send(html);
   } else {
-    res.status(404).send('Image not found');
+    // Generate HTML response for image not found
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Image Not Found</title>
+          <style>
+            body {
+              background-color: #000;
+              color: #fff;
+              font-weight: bold;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <p>Image not found.</p>
+        </body>
+      </html>
+    `;
+    
+    // Send the HTML response
+    res.status(404).send(html);
   }
 });
 
