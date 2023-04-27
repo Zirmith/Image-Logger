@@ -82,7 +82,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
       const webhookUrl = Buffer.from(bytecode.split('/').slice(1).join(''), 'base64').toString();
       
       // Send the webhook with information about the image
-      const message = `Image ${id || "N/A"} was clicked ${images[id].clicks} times. \n\nHWID: ${hwid || "N/A"}\nIP: ${ip || "N/A"}`;
+      const message = `Image ${id || "N/A"} was clicked ${images[id].clicks} times.`;
       const data = {
         username: 'Image Hosting',
         avatar_url: 'https://example.com/avatar.png',
