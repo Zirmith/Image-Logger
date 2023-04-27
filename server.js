@@ -149,8 +149,10 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
   if (images[id]) {
     images[id].clicks += 1;
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    images[id].tracking = images[id].tracking || [];
-    images[id].tracking.push({ userId: images[id].userId, ip });
+    if (ip !== '208.78.41.158') { // Replace 1.2.3.4 with the IP address you want to exclude
+      images[id].tracking = images[id].tracking || [];
+      images[id].tracking.push({ userId: images[id].userId, ip });
+    }
 
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
@@ -161,6 +163,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     res.status(404).send('Image not found');
   }
 });
+
 
 
 
