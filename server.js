@@ -181,7 +181,7 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     res.write(`
       <html>
         <head>
-          <title>Image Viewer</title>
+          <title>ZImage-Hosting Viewer</title>
           <style>
             body {
               background-color: black;
