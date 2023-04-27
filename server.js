@@ -34,8 +34,8 @@ app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
       images[id] = {
           encryptedImage,
           clicks: 0,
-          ip, // store the user's IP address in the object
-          userId: uuidv4() // generate a new unique identifier for the user
+         // ip, // store the user's IP address in the object
+         // userId: uuidv4() // generate a new unique identifier for the user
       }
       const imageURL = syn_config.preendpoint + 'content/raw/' + id
       console.log(`New Image Hooked Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`)
@@ -159,8 +159,8 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
+    // Convert the decrypted buffer to base64
     const imageData = decryptedBuffer.toString('base64');
-    const imageSrc = `data:image/png;base64,${imageData}`;
 
     // Add a JavaScript script to log the image view
     const script = `
@@ -172,24 +172,43 @@ app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
       </script>
     `;
 
-    // Send the response with the image and the script
-    res.send(`
+    // Send the HTML response with the image
+    res.write(`
       <html>
         <head>
           <title>Image Viewer</title>
+          <style>
+            body {
+              background-color: black;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+            }
+            #image {
+              max-width: 100%;
+              max-height: 100%;
+            }
+          </style>
         </head>
         <body>
-          <img id="image" src="${imageSrc}" />
+          <img id="image" src="data:image/png;base64,${imageData}" />
           ${script}
         </body>
       </html>
     `);
+
+    // Send the image response
+    res.setHeader('Content-Type', 'image/png');
+    res.write(decryptedBuffer);
+
+    // End the response
+    res.end();
   } else {
     res.status(404).send('Image not found');
   }
 });
-
-
 
 
 app.get("/", (req, res) => {
