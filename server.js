@@ -6,7 +6,7 @@ const uuidv4 = require('uuid').v4
 const getmac = require('getmac')
 const request = require('request-promise-native');
 const axios = require('axios');
-
+//Syn@#!133(Imager
 
 require('dotenv').config()
 app.use(cors())
