@@ -20,41 +20,42 @@ const syn_config = {
     creator: "user"
 }
 
-const images = {}
+const images = {};
 
 app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
-  // fetch and encrypt the image from the provided URL, and save it to the server
   const imageUrl = req.body.imageUrl;
-  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   try {
     const imageBuffer = await request.get(imageUrl, { encoding: null });
 
-    // Add a red thin border to the image
     const sharp = require('sharp');
     const borderSize = 5;
-    const borderColor = '#FF0000';
+    const gradientColors = ['#FF0000', '#FF8000', '#FFFF00', '#00FF00', '#0000FF', '#8B00FF'];
     const borderedImageBuffer = await sharp(imageBuffer)
       .extend({
         top: borderSize,
         bottom: borderSize,
         left: borderSize,
         right: borderSize,
-        background: borderColor
+        background: {
+          r: 0,
+          g: 0,
+          b: 0,
+          alpha: 0
+        }
       })
+      .linear(gradientColors)
       .toBuffer();
 
     const id = uuidv4();
-    const encryptedImage = encryptImage(borderedImageBuffer);
+    const encryptedImage = await encryptImage(borderedImageBuffer);
     images[id] = {
       encryptedImage,
       clicks: 0,
-      // ip, // store the user's IP address in the object
-      // userId: uuidv4() // generate a new unique identifier for the user
-    }
+      tracking: [] // Initialize an empty tracking array
+    };
 
     const imageURL = syn_config.preendpoint + 'content/raw/' + id;
-    console.log(`New Image Hooked Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`);
     const trackinglink = `${syn_config.preendpoint}content/tracking/` + id;
     res.status(200).send({ imageURL, trackinglink, id });
   } catch (err) {
@@ -63,103 +64,60 @@ app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
   }
 });
 
-
 app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
   const id = req.params.id;
   if (images[id]) {
-    const clicks = images[id].clicks;
-    const tracking = images[id].tracking || [];
+    const { clicks, tracking } = images[id];
     const title = `ZImage-Hosting Tracking - Image ${id}`;
-  // Modify this line to exclude the tracking information
-  const description = `This image has been viewed. Tracking information: ${JSON.stringify(tracking)}`;
-    // Generate HTML response with meta tags and dark background
-    const html = `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <meta name="robots" content="noindex, nofollow" />
-          <meta property="og:title" content="${title}" />
-          <meta property="og:description" content="${description}" />
-          <meta property="og:image" content="https://zimagehosting.onrender.com/host/image/content/raw/${id}" />
-          <meta http-equiv="refresh" content="10" />
-          <title>${title}</title>
-          <style>
-            body {
-              background-color: #000;
-              background-image: linear-gradient(to right, #2d4eff33, #8220ff33);
-              color: #fff;
-              font-weight: bold;
-              text-align: center;
-            }
-            table {
-              margin: 0 auto;
-            }
-            td {
-              padding: 5px;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>${title}</h1>
-          <table>
-            <tr>
-              <td>Clicks:</td>
-              <td>${clicks}</td>
-            </tr>
-            <tr>
-              <td>Last updated:</td>
-              <td>${new Date().toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td>Tracking information:</td>
-              <td>${JSON.stringify(tracking)}</td>
-            </tr>
-          </table>
-        </body>
-      </html>
-    `;
-    
-    // Send the HTML response
+    const filteredTracking = tracking.map(({ timestamp, referer, userAgent }) => ({
+      timestamp,
+      referer,
+      userAgent
+    }));
+    const description = `This image has been viewed. Tracking information: ${JSON.stringify(filteredTracking)}`;
+
+    const html = generateTrackingHtml(title, description, clicks, filteredTracking);
+
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Content-Type', 'text/html');
     res.status(200).send(html);
   } else {
-    // Generate HTML response for image not found
-    const html = `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="robots" content="noindex, nofollow" />
-        <meta property="og:title" content="ZImage-Hosting Tracking - Invalid" />
-        <meta property="og:description" content="This image could not be found in our database" />
-        <meta property="og:image" content="http://example.com/image.jpg" />
-          <title>Image Not Found</title>
-          <style>
-            body {
-              background-color: #000;
-              color: #fff;
-              font-weight: bold;
-              text-align: center;
-            }
-          </style>
-        </head>
-        <body>
-        <p>Sorry, the image you requested could not be found.</p>
-        <p>Please check the URL</a>.</p>
-        </body>
-      </html>
-    `;
-    
-    // Send the HTML response
+    const html = generateImageNotFoundHtml();
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Content-Type', 'text/html');
     res.status(404).send(html);
   }
 });
+
+app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
+  const id = req.params.id;
+  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+  if (images[id]) {
+    // Check if the IP is the same as the one that created the image
+    if (!images[id].tracking.find((entry) => entry.ip === ip)) {
+      images[id].clicks++;
+      images[id].tracking.push({
+        ip,
+        timestamp: new Date().toLocaleString(),
+        referer: req.headers.referer || 'N/A',
+        userAgent: req.headers['user-agent'] || 'N/A'
+      });
+    }
+
+    // Decrypt the encrypted image data
+    const decryptedBuffer = await decryptImage(images[id].encryptedImage);
+
+    // Set the appropriate content type based on the image file extension
+    res.setHeader('Content-Type', 'image/png');
+
+    // Send the decrypted image data
+    res.send(decryptedBuffer);
+  } else {
+    res.status(404).send('Image not found');
+  }
+});
+
 
 
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
@@ -185,34 +143,102 @@ app.get("/", (req, res) => {
 })
 
 
+function generateTrackingHtml(title, description, tracking) {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="${title}" />
+        <meta property="og:description" content="${description}" />
+        <meta property="og:image" content="https://zimagehosting.onrender.com/host/image/content/raw/${id}" />
+        <meta http-equiv="refresh" content="10" />
+        <title>${title}</title>
+        <style>
+          body {
+            background-color: #000;
+            background-image: linear-gradient(to right, #2d4eff33, #8220ff33);
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+          }
+          table {
+            margin: 0 auto;
+          }
+          td {
+            padding: 5px;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+        <table>
+          <tr>
+            <td>Clicks:</td>
+            <td>${clicks}</td>
+          </tr>
+          <tr>
+            <td>Last updated:</td>
+            <td>${new Date().toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td>Tracking information:</td>
+            <td>${JSON.stringify(tracking)}</td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
 
+  return html;
+}
 
-async function decryptImage(encryptedDataPromise) {
-    // Wait for the promise to resolve and get the encrypted data
-    const encryptedData = await encryptedDataPromise;
-  
-    // Decrypt the image using your decryption algorithm
-    // This is just a placeholder
-    const decryptedData = Buffer.from(encryptedData, 'base64');
-    return decryptedData;
-  }
-  
-  
+function generateImageNotFoundHtml() {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="ZImage-Hosting Tracking - Invalid" />
+        <meta property="og:description" content="This image could not be found in our database" />
+        <meta property="og:image" content="http://example.com/image.jpg" />
+        <title>Image Not Found</title>
+        <style>
+          body {
+            background-color: #000;
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <p>Sorry, the image you requested could not be found.</p>
+        <p>Please check the URL.</p>
+      </body>
+    </html>
+  `;
+
+  return html;
+}
+
+async function decryptImage(encryptedData) {
+  // Decrypt the image using your decryption algorithm
+  // This is just a placeholder
+  const decryptedData = Buffer.from(encryptedData, 'base64');
+  return decryptedData;
+}
 
 async function encryptImage(image) {
-    // If the image is a URL, fetch the image from the URL
-    if (typeof image === 'string' && image.startsWith('https')) {
-      const response = await axios.get(image, { responseType: 'arraybuffer' });
-      image = response.data;
-    }
-  
-    // Encrypt the image using your encryption algorithm
-    // This is just a placeholder
-    const encryptedData = image.toString('base64');
-    return encryptedData;
-  }
-  
-
+  // Encrypt the image using your encryption algorithm
+  // This is just a placeholder
+  const encryptedData = image.toString('base64');
+  return encryptedData;
+}
 
 
 app.listen(3009, () => {
