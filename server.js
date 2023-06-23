@@ -138,7 +138,7 @@ app.get("/", (req, res) => {
 })
 
 
-function generateTrackingHtml(title, description, tracking,id) {
+function generateTrackingHtml(title, description, clicks, tracking,id) {
   const html = `
     <!DOCTYPE html>
     <html lang="en">
