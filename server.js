@@ -25,27 +25,44 @@ const images = {}
 app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
   // fetch and encrypt the image from the provided URL, and save it to the server
   const imageUrl = req.body.imageUrl;
- 
   const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
   try {
-      const imageBuffer = await request.get(imageUrl, { encoding: null });
-      const id = uuidv4();
-      const encryptedImage = encryptImage(imageBuffer);
-      images[id] = {
-          encryptedImage,
-          clicks: 0,
-         // ip, // store the user's IP address in the object
-         // userId: uuidv4() // generate a new unique identifier for the user
-      }
-      const imageURL = syn_config.preendpoint + 'content/raw/' + id
-      console.log(`New Image Hooked Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`)
-      const trackinglink = `${syn_config.preendpoint}content/tracking/` + id
-      res.status(200).send({ imageURL, trackinglink, id })
+    const imageBuffer = await request.get(imageUrl, { encoding: null });
+
+    // Add a red thin border to the image
+    const sharp = require('sharp');
+    const borderSize = 5;
+    const borderColor = '#FF0000';
+    const borderedImageBuffer = await sharp(imageBuffer)
+      .extend({
+        top: borderSize,
+        bottom: borderSize,
+        left: borderSize,
+        right: borderSize,
+        background: borderColor
+      })
+      .toBuffer();
+
+    const id = uuidv4();
+    const encryptedImage = encryptImage(borderedImageBuffer);
+    images[id] = {
+      encryptedImage,
+      clicks: 0,
+      // ip, // store the user's IP address in the object
+      // userId: uuidv4() // generate a new unique identifier for the user
+    }
+
+    const imageURL = syn_config.preendpoint + 'content/raw/' + id;
+    console.log(`New Image Hooked Track it here: ${syn_config.preendpoint + "content/tracking/"+id}`);
+    const trackinglink = `${syn_config.preendpoint}content/tracking/` + id;
+    res.status(200).send({ imageURL, trackinglink, id });
   } catch (err) {
-      console.error(err);
-      res.status(400).send({ error: 'Error fetching or encrypting image' });
+    console.error(err);
+    res.status(400).send({ error: 'Error fetching or encrypting image' });
   }
 });
+
 
 app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
   const id = req.params.id;
