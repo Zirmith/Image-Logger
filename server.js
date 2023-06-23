@@ -71,7 +71,7 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
     }));
     const description = `This image has been viewed. Tracking information: ${JSON.stringify(filteredTracking)}`;
 
-    const html = generateTrackingHtml(title, description, clicks, filteredTracking);
+    const html = generateTrackingHtml(title, description, clicks, filteredTracking, id);
 
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Content-Type', 'text/html');
@@ -138,7 +138,7 @@ app.get("/", (req, res) => {
 })
 
 
-function generateTrackingHtml(title, description, tracking) {
+function generateTrackingHtml(title, description, tracking,id) {
   const html = `
     <!DOCTYPE html>
     <html lang="en">
