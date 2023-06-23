@@ -28,23 +28,18 @@ app.post(syn_config.preendpoint + 'encrypt', async (req, res) => {
   try {
     const imageBuffer = await request.get(imageUrl, { encoding: null });
 
+   // Add a red thin border to the image
     const sharp = require('sharp');
     const borderSize = 5;
-    const gradientColors = ['#FF0000', '#FF8000', '#FFFF00', '#00FF00', '#0000FF', '#8B00FF'];
+    const borderColor = '#FF0000';
     const borderedImageBuffer = await sharp(imageBuffer)
       .extend({
         top: borderSize,
         bottom: borderSize,
         left: borderSize,
         right: borderSize,
-        background: {
-          r: 0,
-          g: 0,
-          b: 0,
-          alpha: 0
-        }
+        background: borderColor
       })
-      .linear(gradientColors)
       .toBuffer();
 
     const id = uuidv4();
