@@ -148,66 +148,19 @@ app.get(syn_config.preendpoint + 'content/tracking/:id', (req, res) => {
 app.get(syn_config.preendpoint + 'content/raw/:id', async (req, res) => {
   const id = req.params.id;
   if (images[id]) {
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    const hwid = getmac.default();
-
-    if (ip !== '208.78.41.158') {
-      images[id].tracking = images[id].tracking || [];
-      images[id].tracking.push({ Hardware: hwid, ip });
-    }
-
     // Decrypt the encrypted image data
     const decryptedBuffer = await decryptImage(images[id].encryptedImage);
 
-    // Convert the decrypted buffer to base64
-    const imageData = decryptedBuffer.toString('base64');
+    // Set the appropriate content type based on the image file extension
+    res.setHeader('Content-Type', 'image/png');
 
-    // Add a JavaScript script to log the image view
-    const script = `
-      <script>
-        const img = document.getElementById('image');
-        img.addEventListener('load', function() {
-          //console.log('Image viewed. ID: ${id}, IP: ${ip}');
-        });
-      </script>
-    `;
-
-    // Set the response headers to include the og:image meta tag
-    res.setHeader('Content-Type', 'text/html');
-    res.write(`
-      <html>
-        <head>
-          <title>ZImage-Hosting Viewer</title>
-          <meta property="og:image" content="data:image/png;base64,${imageData}" />
-          <meta property="og:image:width" content="600" />
-          <meta property="og:image:height" content="400" />
-          <style>
-            body {
-              background-color: black;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 100vh;
-              margin: 0;
-            }
-            #image {
-              max-width: 100%;
-              max-height: 100%;
-            }
-          </style>
-        </head>
-        <body>
-          <img id="image" src="data:image/png;base64,${imageData}" />
-          ${script}
-        </body>
-      </html>
-    `);
-
-    res.end();
+    // Send the decrypted image data
+    res.send(decryptedBuffer);
   } else {
     res.status(404).send('Image not found');
   }
 });
+
 
 
 app.get("/", (req, res) => {
